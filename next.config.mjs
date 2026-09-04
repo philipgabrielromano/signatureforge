@@ -2,6 +2,7 @@
 const nextConfig = {
   output: "standalone",
   serverExternalPackages: ["@prisma/client", "sharp"],
+  agentRules: false,
   images: {
     remotePatterns: [
       {
