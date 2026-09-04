@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SAMPLE_USER, resolveVariables } from "@/lib/variables";
 
 type TemplateCardProps = {
   id: string;
@@ -26,13 +27,15 @@ export function TemplateCard({
   updatedAt,
   assignedCount,
 }: TemplateCardProps) {
+  const previewHtml = resolveVariables(htmlContent, SAMPLE_USER);
+
   return (
     <Link href={`/templates/${id}`}>
       <Card className="h-full overflow-hidden transition hover:border-primary/40 hover:shadow-md">
         <div className="h-36 overflow-hidden border-b bg-white p-3">
           <div
-            className="origin-top-left scale-[0.72] text-[12px] leading-snug text-slate-800"
-            dangerouslySetInnerHTML={{ __html: htmlContent }}
+            className="origin-top-left scale-[0.72] text-[12px] leading-snug text-slate-800 [&_img]:max-h-12 [&_p]:m-0"
+            dangerouslySetInnerHTML={{ __html: previewHtml }}
           />
         </div>
         <CardHeader className="space-y-2 pb-2">

@@ -13,6 +13,7 @@ export function ImagesClient({
     id: string;
     originalName: string;
     publicUrl: string;
+    previewUrl?: string;
     size: number;
     mimeType: string;
   }>;

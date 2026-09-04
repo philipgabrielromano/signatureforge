@@ -137,8 +137,8 @@ Since you're already using Azure, this integrates directly into your existing su
 1. Go to your Storage Account → Containers → + Container
 2. Name: `signature-images`
 3. **Public access level: Blob** (allows anonymous read of individual blobs)
-   - This is required so Outlook can fetch images in email signatures
-   - Emails are received by external parties — images must be publicly accessible
+   - This is required so Outlook can fetch images in email signatures. SignatureForge stores a long-lived read SAS on each blob, so the container can stay private.
+   - Emails are received by external parties — image URLs must be fetchable over HTTPS.
 4. Click Create
 
 ### Step 3: Get Credentials

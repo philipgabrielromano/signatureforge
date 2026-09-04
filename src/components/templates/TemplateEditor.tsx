@@ -81,7 +81,13 @@ const SOCIAL = [
   },
 ];
 
-type ImageItem = { id: string; publicUrl: string; originalName: string; altText?: string | null };
+type ImageItem = {
+  id: string;
+  publicUrl: string;
+  previewUrl?: string;
+  originalName: string;
+  altText?: string | null;
+};
 
 type UserOption = UserWithProfile & { id: string };
 
@@ -110,7 +116,9 @@ export function TemplateEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        hardBreak: { keepMarks: true },
+      }),
       Underline,
       TextStyle,
       Color,
@@ -119,6 +127,16 @@ export function TemplateEditor({
       Image,
       Link.configure({ openOnClick: false }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Extension.create({
+        name: "enterAsBreak",
+        priority: 1000,
+        addKeyboardShortcuts() {
+          return {
+            Enter: () => this.editor.commands.setHardBreak(),
+            "Shift-Enter": () => this.editor.commands.setHardBreak(),
+          };
+        },
+      }),
     ],
     content: initial?.htmlContent ?? "<p>{{fullName}}</p><p>{{title}}</p>",
     immediatelyRender: false,
@@ -343,7 +361,11 @@ export function TemplateEditor({
                   }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image.publicUrl} alt={image.originalName} className="h-16 w-full object-contain" />
+                  <img
+                    src={image.previewUrl || image.publicUrl}
+                    alt={image.originalName}
+                    className="h-16 w-full object-contain"
+                  />
                   <p className="mt-1 truncate text-[11px]">{image.originalName}</p>
                 </button>
               ))

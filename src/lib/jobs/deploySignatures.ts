@@ -3,6 +3,7 @@ import { resolveTemplateForUser } from "@/lib/assignments";
 import { injectSignatureForUser } from "@/lib/graph/signatures";
 import { isGraphConfigured } from "@/lib/graph/client";
 import { tenantGraphConfig } from "@/lib/tenant";
+import { withSignedImageUrls } from "@/lib/azureBlob";
 import { resolveVariables, toUserProfile } from "@/lib/variables";
 import { writeAudit } from "@/lib/tenant";
 import type { DeployBatchResult } from "@/types";
@@ -104,7 +105,9 @@ export async function deployPendingSignatures(options: {
         continue;
       }
 
-      const html = resolveVariables(template.htmlContent, toUserProfile(user));
+      const html = await withSignedImageUrls(
+        resolveVariables(template.htmlContent, toUserProfile(user))
+      );
       const config = tenantGraphConfig(user.tenant);
 
       if (!isGraphConfigured(config)) {

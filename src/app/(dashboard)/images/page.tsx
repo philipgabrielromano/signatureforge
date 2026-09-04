@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getPrimaryTenant } from "@/lib/tenant";
-import { isAzureStorageConfigured } from "@/lib/azureBlob";
+import { blobPreviewPath, isAzureStorageConfigured } from "@/lib/azureBlob";
 import { Header } from "@/components/layout/Header";
 import { ImagesClient } from "@/components/images/ImagesClient";
 
@@ -23,6 +23,7 @@ export default async function ImagesPage() {
             id: image.id,
             originalName: image.originalName,
             publicUrl: image.publicUrl,
+            previewUrl: blobPreviewPath(image.id),
             size: image.size,
             mimeType: image.mimeType,
           }))}

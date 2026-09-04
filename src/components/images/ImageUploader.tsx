@@ -52,30 +52,38 @@ export function ImageUploader({ disabled, onUploaded }: { disabled?: boolean; on
         if (dropped) setFile(dropped);
       }}
     >
-      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end">
-        <div className="flex-1 space-y-1.5">
-          <Label htmlFor="image-file">Upload to Azure Blob Storage</Label>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,16rem)_auto] sm:items-end">
+        <div className="min-w-0 space-y-1.5">
+          <Label htmlFor="image-file">Image file</Label>
           <Input
             id="image-file"
             type="file"
+            className="file:mr-3"
             accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
             disabled={disabled || uploading}
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
-          <p className="text-xs text-muted-foreground">
-            Files go to a public Azure container so Outlook can fetch them. Render disk is ephemeral and is never used.
-          </p>
         </div>
-        <div className="w-full space-y-1.5 sm:w-56">
+        <div className="min-w-0 space-y-1.5">
           <Label htmlFor="alt">Alt text</Label>
-          <Input id="alt" value={alt} onChange={(e) => setAlt(e.target.value)} disabled={disabled} />
+          <Input
+            id="alt"
+            value={alt}
+            onChange={(e) => setAlt(e.target.value)}
+            disabled={disabled}
+            placeholder="Company logo"
+          />
         </div>
         <Button disabled={disabled || uploading} onClick={() => upload()}>
           <Upload className="mr-2 h-4 w-4" />
           {uploading ? "Uploading…" : "Upload"}
         </Button>
       </div>
-      {file ? <p className="mt-3 text-sm text-muted-foreground">Selected: {file.name}</p> : null}
+      <p className="mt-3 text-xs text-muted-foreground">
+        PNG, JPEG, GIF, WebP, or SVG. Max 5 MB. Files are stored in Azure Blob Storage with a durable read URL so
+        Outlook can fetch them. Render disk is never used.
+      </p>
+      {file ? <p className="mt-2 text-sm text-muted-foreground">Selected: {file.name}</p> : null}
     </div>
   );
 }

@@ -8,6 +8,7 @@ type ImageItem = {
   id: string;
   originalName: string;
   publicUrl: string;
+  previewUrl?: string;
   size: number;
   mimeType: string;
 };
@@ -49,7 +50,11 @@ export function ImageLibrary({
         <div key={image.id} className="overflow-hidden rounded-xl border bg-card">
           <div className="flex h-36 items-center justify-center bg-slate-50 p-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={image.publicUrl} alt={image.originalName} className="max-h-28 object-contain" />
+            <img
+              src={image.previewUrl || `/api/images/${image.id}/file`}
+              alt={image.originalName}
+              className="max-h-28 object-contain"
+            />
           </div>
           <div className="space-y-2 p-3">
             <p className="truncate text-sm font-medium">{image.originalName}</p>

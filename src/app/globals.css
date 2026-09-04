@@ -38,3 +38,12 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+.ProseMirror {
+  outline: none;
+  min-height: 26rem;
+}
+
+.ProseMirror p {
+  margin: 0;
+}

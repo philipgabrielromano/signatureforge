@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth, unauthorizedResponse } from "@/lib/auth";
 import { getPrimaryTenant, writeAudit } from "@/lib/tenant";
-import { isAzureStorageConfigured, uploadImageToBlob } from "@/lib/azureBlob";
+import {
+  blobPreviewPath,
+  getDurablePublicUrl,
+  isAzureStorageConfigured,
+  isSignedBlobUrl,
+  uploadImageToBlob,
+} from "@/lib/azureBlob";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +25,32 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
+  const repaired = await Promise.all(
+    images.map(async (image) => {
+      let publicUrl = image.publicUrl;
+      if (isAzureStorageConfigured() && !isSignedBlobUrl(publicUrl)) {
+        try {
+          publicUrl = await getDurablePublicUrl(image.filename);
+          if (publicUrl !== image.publicUrl) {
+            await prisma.signatureImage.update({
+              where: { id: image.id },
+              data: { publicUrl },
+            });
+          }
+        } catch {
+          publicUrl = image.publicUrl;
+        }
+      }
+      return {
+        ...image,
+        publicUrl,
+        previewUrl: blobPreviewPath(image.id),
+      };
+    })
+  );
+
   return NextResponse.json({
-    images,
+    images: repaired,
     storageConfigured: isAzureStorageConfigured(),
   });
 }
@@ -81,5 +111,8 @@ export async function POST(request: NextRequest) {
     details: { publicUrl: image.publicUrl, size: image.size },
   });
 
-  return NextResponse.json({ image }, { status: 201 });
+  return NextResponse.json(
+    { image: { ...image, previewUrl: blobPreviewPath(image.id) } },
+    { status: 201 }
+  );
 }
