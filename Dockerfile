@@ -35,6 +35,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_module
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs --chmod=755 /app/scripts/migrate-deploy.sh ./migrate-deploy.sh
+
+ENV PATH="/app/node_modules/.bin:${PATH}"
 
 USER nextjs
 EXPOSE 10000
