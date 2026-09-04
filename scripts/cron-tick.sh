@@ -11,10 +11,22 @@ if [ -z "${CRON_SECRET:-}" ]; then
   exit 1
 fi
 
-# fromService host is a hostname without a scheme
+# Render fromService `host` is an internal name (e.g. signatureforge).
+# fromService `hostport` is host:port on the private network.
+# TLS terminates at Render's edge — private-network calls must use HTTP.
 case "$APP_URL" in
-  http://*|https://*) TARGET="$APP_URL" ;;
-  *) TARGET="https://$APP_URL" ;;
+  http://*|https://*)
+    TARGET="$APP_URL"
+    ;;
+  *:*)
+    TARGET="http://$APP_URL"
+    ;;
+  *.onrender.com|*.*)
+    TARGET="https://$APP_URL"
+    ;;
+  *)
+    TARGET="http://${APP_URL}${APP_PORT:+:$APP_PORT}"
+    ;;
 esac
 
 echo "Calling ${TARGET}/api/cron/tick"

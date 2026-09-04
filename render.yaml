@@ -76,11 +76,13 @@ services:
     dockerContext: .
     schedule: "*/5 * * * *"
     envVars:
+      # Private-network host:port (HTTP). Do not use `host` + https:// —
+      # that becomes https://signatureforge:443 and fails with curl exit 7.
       - key: APP_URL
         fromService:
           name: signatureforge
           type: web
-          property: host
+          property: hostport
       - key: CRON_SECRET
         fromService:
           name: signatureforge
