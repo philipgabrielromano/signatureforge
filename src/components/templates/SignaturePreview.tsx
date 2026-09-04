@@ -32,7 +32,7 @@ export function SignaturePreview({
         </div>
         <div className="mb-6 text-sm text-slate-700">Hi team, sharing the latest signature rollout notes.</div>
         <div
-          className="border-t pt-3 text-[13px] leading-relaxed text-slate-800 [&_img]:max-h-16"
+          className="border-t pt-3 text-[13px] leading-relaxed text-slate-800 [&_img]:max-h-16 [&_img.sig-icon]:max-h-4"
           dangerouslySetInnerHTML={{ __html: resolved }}
         />
       </div>

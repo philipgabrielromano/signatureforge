@@ -47,3 +47,16 @@
 .ProseMirror p {
   margin: 0;
 }
+
+.ProseMirror img {
+  display: inline-block;
+  max-height: 96px;
+  width: auto;
+  vertical-align: middle;
+}
+
+.ProseMirror img.sig-icon {
+  width: 16px;
+  height: 16px;
+  max-height: 16px;
+}

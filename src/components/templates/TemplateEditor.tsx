@@ -23,6 +23,7 @@ import {
   Linkedin,
   Facebook,
   Instagram,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { VariableInserter } from "./VariableInserter";
 import { PreviewUserPicker } from "./PreviewUserPicker";
 import { SignaturePreview } from "./SignaturePreview";
 import { escapeHtmlAttr, findUnsafeImageUrls } from "@/lib/utils";
@@ -59,25 +61,62 @@ const FontSize = Extension.create({
   },
 });
 
-const SOCIAL = [
+const SignatureImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("width"),
+        renderHTML: (attributes) => (attributes.width ? { width: attributes.width } : {}),
+      },
+      height: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("height"),
+        renderHTML: (attributes) => (attributes.height ? { height: attributes.height } : {}),
+      },
+      style: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("style"),
+        renderHTML: (attributes) => (attributes.style ? { style: attributes.style } : {}),
+      },
+      class: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("class"),
+        renderHTML: (attributes) => (attributes.class ? { class: attributes.class } : {}),
+      },
+    };
+  },
+});
+
+const SOCIAL: Array<{
+  name: string;
+  icon?: LucideIcon;
+  src: string;
+  placeholder: string;
+}> = [
   {
     name: "LinkedIn",
     icon: Linkedin,
-    html: '<a href="https://www.linkedin.com/company/contoso"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/linkedin.svg" width="16" height="16" alt="LinkedIn" /></a>',
+    src: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/linkedin.svg",
+    placeholder: "https://www.linkedin.com/in/",
   },
   {
     name: "X",
-    html: '<a href="https://x.com/contoso"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/x.svg" width="16" height="16" alt="X" /></a>',
+    src: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/x.svg",
+    placeholder: "https://x.com/",
   },
   {
     name: "Instagram",
     icon: Instagram,
-    html: '<a href="https://instagram.com/contoso"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/instagram.svg" width="16" height="16" alt="Instagram" /></a>',
+    src: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/instagram.svg",
+    placeholder: "https://www.instagram.com/",
   },
   {
     name: "Facebook",
     icon: Facebook,
-    html: '<a href="https://facebook.com/contoso"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/facebook.svg" width="16" height="16" alt="Facebook" /></a>',
+    src: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/facebook.svg",
+    placeholder: "https://www.facebook.com/",
   },
 ];
 
@@ -110,6 +149,9 @@ export function TemplateEditor({
   const [previewUser, setPreviewUser] = useState<UserWithProfile>(SAMPLE_USER);
   const [images, setImages] = useState<ImageItem[]>([]);
   const [imageOpen, setImageOpen] = useState(false);
+  const [social, setSocial] = useState<(typeof SOCIAL)[number] | null>(null);
+  const [socialUrl, setSocialUrl] = useState("");
+  const [socialUrls, setSocialUrls] = useState<Record<string, string>>({});
 
   const editor = useEditor({
     extensions: [
@@ -121,7 +163,7 @@ export function TemplateEditor({
       Color,
       FontFamily,
       FontSize,
-      Image,
+      SignatureImage,
       Link.configure({ openOnClick: false }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Extension.create({
@@ -146,6 +188,20 @@ export function TemplateEditor({
       .then((data) => setImages(data.images ?? []))
       .catch(() => undefined);
   }, []);
+
+  function insertSocial() {
+    if (!social) return;
+    const href = socialUrl.trim();
+    if (!href) {
+      toast.error("Enter a URL.");
+      return;
+    }
+    insert(
+      `<a href="${escapeHtmlAttr(href)}"><img src="${escapeHtmlAttr(social.src)}" width="16" height="16" alt="${escapeHtmlAttr(social.name)}" class="sig-icon" style="width:16px;height:16px;border:0;display:inline-block;vertical-align:middle;" /></a>&nbsp;`
+    );
+    setSocialUrls((current) => ({ ...current, [social.name]: href }));
+    setSocial(null);
+  }
 
   const insert = useCallback(
     (content: string) => {
@@ -284,7 +340,17 @@ export function TemplateEditor({
               Image
             </Button>
             {SOCIAL.map((item) => (
-              <Button key={item.name} type="button" size="sm" variant="outline" onClick={() => insert(item.html)}>
+              <Button
+                key={item.name}
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSocial(item);
+                  setSocialUrl(socialUrls[item.name] || item.placeholder);
+                }}
+              >
+                {item.icon ? <item.icon className="mr-2 h-4 w-4" /> : null}
                 {item.name}
               </Button>
             ))}
@@ -296,7 +362,7 @@ export function TemplateEditor({
           {htmlMode ? (
             <Textarea className="min-h-[420px] font-mono text-xs" value={html} onChange={(e) => setHtml(e.target.value)} />
           ) : (
-            <EditorContent editor={editor} className="min-h-[420px] rounded-md border bg-white p-3 prose prose-sm max-w-none" />
+            <EditorContent editor={editor} className="min-h-[420px] rounded-md border bg-white p-3 prose prose-sm max-w-none [&_img.sig-icon]:!h-4 [&_img.sig-icon]:!w-4" />
           )}
         </div>
 
@@ -345,6 +411,32 @@ export function TemplateEditor({
                 </button>
               ))
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(social)} onOpenChange={(open) => { if (!open) setSocial(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{social ? `${social.name} link` : "Social link"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="social-url">URL</Label>
+              <Input
+                id="social-url"
+                value={socialUrl}
+                onChange={(e) => setSocialUrl(e.target.value)}
+                placeholder={social?.placeholder}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    insertSocial();
+                  }
+                }}
+              />
+            </div>
+            <Button onClick={insertSocial}>Insert</Button>
           </div>
         </DialogContent>
       </Dialog>
