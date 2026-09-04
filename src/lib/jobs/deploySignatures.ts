@@ -2,17 +2,19 @@ import { prisma } from "@/lib/prisma";
 import { resolveTemplateForUser } from "@/lib/assignments";
 import { injectSignatureForUser } from "@/lib/graph/signatures";
 import { isGraphConfigured } from "@/lib/graph/client";
+import { loadGroupMemberMap } from "@/lib/graph/groups";
 import { tenantGraphConfig } from "@/lib/tenant";
 import { withSignedImageUrls } from "@/lib/azureBlob";
 import { resolveVariables, toUserProfile } from "@/lib/variables";
 import { writeAudit } from "@/lib/tenant";
 import type { DeployBatchResult } from "@/types";
 import type { Assignment, Template } from "@prisma/client";
+import type { GroupMemberMap } from "@/lib/assignments";
 
 export async function markUsersPendingForTemplate(templateId: string) {
   const template = await prisma.template.findUnique({
     where: { id: templateId },
-    include: { assignments: true },
+    include: { assignments: true, tenant: true },
   });
   if (!template) return 0;
 
@@ -22,8 +24,9 @@ export async function markUsersPendingForTemplate(templateId: string) {
     include: { template: true },
   });
 
+  const groupMembers = await loadGroupMemberMap(tenantGraphConfig(template.tenant), assignments);
   const ids = users
-    .filter((user) => resolveTemplateForUser(user, assignments)?.id === templateId)
+    .filter((user) => resolveTemplateForUser(user, assignments, groupMembers)?.id === templateId)
     .map((user) => user.id);
 
   if (ids.length === 0) return 0;
@@ -79,6 +82,7 @@ export async function deployPendingSignatures(options: {
   }
 
   const assignmentsByTenant = new Map<string, Array<Assignment & { template: Template }>>();
+  const groupMembersByTenant = new Map<string, GroupMemberMap>();
 
   for (const user of users) {
     result.processed += 1;
@@ -90,9 +94,17 @@ export async function deployPendingSignatures(options: {
           include: { template: true },
         });
         assignmentsByTenant.set(user.tenantId, assignments);
+        groupMembersByTenant.set(
+          user.tenantId,
+          await loadGroupMemberMap(tenantGraphConfig(user.tenant), assignments)
+        );
       }
 
-      const template = resolveTemplateForUser(user, assignments);
+      const template = resolveTemplateForUser(
+        user,
+        assignments,
+        groupMembersByTenant.get(user.tenantId)
+      );
       if (!template) {
         await prisma.user.update({
           where: { id: user.id },

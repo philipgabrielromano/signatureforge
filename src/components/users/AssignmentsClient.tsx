@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { TargetPicker, type DirectoryKind } from "./TargetPicker";
 
 type AssignmentRow = {
   id: string;
@@ -29,11 +30,36 @@ export function AssignmentsClient({
 }) {
   const [templateId, setTemplateId] = useState("");
   const [orgWide, setOrgWide] = useState(true);
-  const [targetType, setTargetType] = useState("department");
+  const [targetType, setTargetType] = useState<DirectoryKind>("department");
   const [targetValue, setTargetValue] = useState("");
+  const [targetLabel, setTargetLabel] = useState("");
   const [priority, setPriority] = useState("0");
+  const [groupNames, setGroupNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const ids = assignments
+      .filter((assignment) => assignment.targetType === "group" && assignment.targetValue)
+      .map((assignment) => assignment.targetValue as string);
+    if (ids.length === 0) return;
+    fetch(`/api/directory?kind=groups&ids=${ids.join(",")}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const next: Record<string, string> = {};
+        for (const item of data.items ?? []) next[item.id] = item.label;
+        setGroupNames(next);
+      })
+      .catch(() => undefined);
+  }, [assignments]);
 
   async function create() {
+    if (!templateId) {
+      toast.error("Choose a template.");
+      return;
+    }
+    if (!orgWide && !targetValue) {
+      toast.error("Choose a target.");
+      return;
+    }
     const res = await fetch("/api/assignments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -64,9 +90,18 @@ export function AssignmentsClient({
     window.location.reload();
   }
 
+  function targetDisplay(assignment: AssignmentRow) {
+    if (assignment.isOrgWide) return "Entire organization";
+    if (assignment.targetType === "group") {
+      const name = assignment.targetValue ? groupNames[assignment.targetValue] : null;
+      return name ? `group: ${name}` : `group: ${assignment.targetValue}`;
+    }
+    return `${assignment.targetType}: ${assignment.targetValue}`;
+  }
+
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 rounded-xl border bg-card p-4 md:grid-cols-5">
+      <div className="grid gap-4 rounded-xl border bg-card p-4 md:grid-cols-2 xl:grid-cols-6">
         <div className="space-y-1.5 md:col-span-2">
           <Label>Template</Label>
           <Select value={templateId} onValueChange={setTemplateId}>
@@ -76,7 +111,7 @@ export function AssignmentsClient({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-end gap-2">
+        <div className="flex items-end">
           <div>
             <p className="text-sm font-medium">Org-wide</p>
             <Switch checked={orgWide} onCheckedChange={setOrgWide} />
@@ -86,7 +121,14 @@ export function AssignmentsClient({
           <>
             <div className="space-y-1.5">
               <Label>Type</Label>
-              <Select value={targetType} onValueChange={setTargetType}>
+              <Select
+                value={targetType}
+                onValueChange={(value) => {
+                  setTargetType(value as DirectoryKind);
+                  setTargetValue("");
+                  setTargetLabel("");
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="department">Department</SelectItem>
@@ -95,17 +137,24 @@ export function AssignmentsClient({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>Value</Label>
-              <Input value={targetValue} onChange={(e) => setTargetValue(e.target.value)} placeholder="IT" />
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Target</Label>
+              <TargetPicker
+                kind={targetType}
+                value={targetValue}
+                label={targetLabel}
+                onChange={(nextValue, nextLabel) => {
+                  setTargetValue(nextValue);
+                  setTargetLabel(nextLabel);
+                }}
+              />
             </div>
           </>
-        ) : (
-          <div className="space-y-1.5">
-            <Label>Priority</Label>
-            <Input type="number" value={priority} onChange={(e) => setPriority(e.target.value)} />
-          </div>
-        )}
+        ) : null}
+        <div className="space-y-1.5">
+          <Label>Priority</Label>
+          <Input type="number" value={priority} onChange={(e) => setPriority(e.target.value)} />
+        </div>
         <div className="flex items-end">
           <Button onClick={create}>Add assignment</Button>
         </div>
@@ -133,11 +182,7 @@ export function AssignmentsClient({
               assignments.map((assignment) => (
                 <TableRow key={assignment.id}>
                   <TableCell className="font-medium">{assignment.template.name}</TableCell>
-                  <TableCell>
-                    {assignment.isOrgWide
-                      ? "Entire organization"
-                      : `${assignment.targetType}: ${assignment.targetValue}`}
-                  </TableCell>
+                  <TableCell>{targetDisplay(assignment)}</TableCell>
                   <TableCell>{assignment.priority}</TableCell>
                   <TableCell>
                     <Badge variant={assignment.isActive ? "success" : "secondary"}>

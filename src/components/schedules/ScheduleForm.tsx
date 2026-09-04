@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { TargetPicker, type DirectoryKind } from "@/components/users/TargetPicker";
 
 export function ScheduleForm({
   templates,
@@ -24,8 +25,9 @@ export function ScheduleForm({
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
   const [orgWide, setOrgWide] = useState(true);
-  const [targetType, setTargetType] = useState("department");
+  const [targetType, setTargetType] = useState<DirectoryKind>("department");
   const [targetValue, setTargetValue] = useState("");
+  const [targetLabel, setTargetLabel] = useState("");
   const [conflicts, setConflicts] = useState<{ id: string; name: string }[] | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -121,7 +123,14 @@ export function ScheduleForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Target type</Label>
-            <Select value={targetType} onValueChange={setTargetType}>
+            <Select
+              value={targetType}
+              onValueChange={(value) => {
+                setTargetType(value as DirectoryKind);
+                setTargetValue("");
+                setTargetLabel("");
+              }}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="department">Department</SelectItem>
@@ -131,8 +140,16 @@ export function ScheduleForm({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Target value</Label>
-            <Input value={targetValue} onChange={(e) => setTargetValue(e.target.value)} placeholder="Marketing" />
+            <Label>Target</Label>
+            <TargetPicker
+              kind={targetType}
+              value={targetValue}
+              label={targetLabel}
+              onChange={(nextValue, nextLabel) => {
+                setTargetValue(nextValue);
+                setTargetLabel(nextLabel);
+              }}
+            />
           </div>
         </div>
       ) : null}

@@ -1,8 +1,15 @@
 import type { Assignment, Template, User } from "@prisma/client";
+import { isGroupId } from "@/lib/graph/groups";
 
 type AssignmentWithTemplate = Assignment & { template: Template };
 
-export function assignmentMatchesUser(assignment: Assignment, user: User): boolean {
+export type GroupMemberMap = Map<string, Set<string>>;
+
+export function assignmentMatchesUser(
+  assignment: Pick<Assignment, "isActive" | "isOrgWide" | "targetType" | "targetValue">,
+  user: User,
+  groupMembers?: GroupMemberMap
+): boolean {
   if (!assignment.isActive) return false;
   if (assignment.isOrgWide) return true;
 
@@ -23,10 +30,13 @@ export function assignmentMatchesUser(assignment: Assignment, user: User): boole
   }
 
   if (assignment.targetType === "group") {
+    const value = assignment.targetValue;
+    if (!value) return false;
+    if (isGroupId(value)) {
+      return Boolean(groupMembers?.get(value)?.has(user.azureObjectId));
+    }
     return Boolean(
-      user.department &&
-        assignment.targetValue &&
-        user.department.toLowerCase() === assignment.targetValue.toLowerCase()
+      user.department && user.department.toLowerCase() === value.toLowerCase()
     );
   }
 
@@ -35,10 +45,11 @@ export function assignmentMatchesUser(assignment: Assignment, user: User): boole
 
 export function resolveTemplateForUser(
   user: User,
-  assignments: AssignmentWithTemplate[]
+  assignments: AssignmentWithTemplate[],
+  groupMembers?: GroupMemberMap
 ): Template | null {
   const matches = assignments
-    .filter((a) => a.template.isActive && assignmentMatchesUser(a, user))
+    .filter((a) => a.template.isActive && assignmentMatchesUser(a, user, groupMembers))
     .sort((a, b) => b.priority - a.priority || b.createdAt.getTime() - a.createdAt.getTime());
 
   return matches[0]?.template ?? null;

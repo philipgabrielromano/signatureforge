@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { assignmentMatchesUser } from "@/lib/assignments";
-import { writeAudit } from "@/lib/tenant";
+import { loadGroupMemberMap } from "@/lib/graph/groups";
+import { tenantGraphConfig, writeAudit } from "@/lib/tenant";
 
 export async function activateScheduledCampaigns(now = new Date()) {
   const due = await prisma.schedule.findMany({
@@ -8,13 +9,14 @@ export async function activateScheduledCampaigns(now = new Date()) {
       status: "scheduled",
       startAt: { lte: now },
     },
-    include: { template: true },
+    include: { template: true, tenant: true },
   });
 
   const activated: string[] = [];
 
   for (const schedule of due) {
     const users = await prisma.user.findMany({ where: { tenantId: schedule.tenantId } });
+    const groupMembers = await loadGroupMemberMap(tenantGraphConfig(schedule.tenant), [schedule]);
     const matching = users.filter((user) =>
       assignmentMatchesUser(
         {
@@ -22,8 +24,9 @@ export async function activateScheduledCampaigns(now = new Date()) {
           isOrgWide: schedule.isOrgWide,
           targetType: schedule.targetType,
           targetValue: schedule.targetValue,
-        } as never,
-        user
+        },
+        user,
+        groupMembers
       )
     );
 

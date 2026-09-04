@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { assignmentMatchesUser } from "@/lib/assignments";
-import { writeAudit } from "@/lib/tenant";
+import { loadGroupMemberMap } from "@/lib/graph/groups";
+import { tenantGraphConfig, writeAudit } from "@/lib/tenant";
 
 export async function deactivateExpiredCampaigns(now = new Date()) {
   const expired = await prisma.schedule.findMany({
@@ -8,12 +9,14 @@ export async function deactivateExpiredCampaigns(now = new Date()) {
       status: "active",
       endAt: { not: null, lte: now },
     },
+    include: { tenant: true },
   });
 
   const deactivated: string[] = [];
 
   for (const schedule of expired) {
     const users = await prisma.user.findMany({ where: { tenantId: schedule.tenantId } });
+    const groupMembers = await loadGroupMemberMap(tenantGraphConfig(schedule.tenant), [schedule]);
     const matching = users.filter((user) =>
       assignmentMatchesUser(
         {
@@ -21,8 +24,9 @@ export async function deactivateExpiredCampaigns(now = new Date()) {
           isOrgWide: schedule.isOrgWide,
           targetType: schedule.targetType,
           targetValue: schedule.targetValue,
-        } as never,
-        user
+        },
+        user,
+        groupMembers
       )
     );
 
