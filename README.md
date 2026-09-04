@@ -51,7 +51,7 @@ Render web services use an **ephemeral filesystem**. Uploaded logos never land i
 
 There is **no `node-cron`**. In-process timers die on every deploy. Scheduled work lives in `src/lib/jobs/tick.ts` and is triggered by the Cron Job container.
 
-Prisma migrations run at **deploy time** via `preDeployCommand: npx prisma migrate deploy` in `render.yaml`, not during `next start`.
+Prisma migrations run at **deploy time** via `preDeployCommand` in `render.yaml` (`node node_modules/prisma/build/index.js migrate deploy`), not during `next start`. The production image is Next.js standalone, so `npx prisma` is not on `PATH`.
 
 ## Local development
 
