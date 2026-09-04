@@ -31,6 +31,21 @@ function envelope(userEmail: string, bodyXml: string): string {
 
 export type EwsResult = { ok: boolean; xml: string; error?: string };
 
+function soapError(action: string, status: number, xml: string): string {
+  const code = xml.match(/<(?:m:)?ResponseCode>([^<]+)<\/(?:m:)?ResponseCode>/)?.[1];
+  const message = xml.match(/<(?:m:)?MessageText>([^<]+)<\/(?:m:)?MessageText>/)?.[1];
+  const innerCode = xml.match(/Name="InnerErrorResponseCode">([^<]+)/)?.[1];
+  const innerMessage = xml.match(/Name="InnerErrorMessageText">([^<]+)/)?.[1];
+  const parts = [`EWS ${action} failed (${status}`];
+  if (code) parts.push(` ${code}`);
+  parts.push(")");
+  if (message) parts.push(`: ${message}`);
+  if (innerCode || innerMessage) {
+    parts.push(` [${[innerCode, innerMessage].filter(Boolean).join(": ")}]`);
+  }
+  return parts.join("");
+}
+
 export async function ewsSoap(params: {
   userEmail: string;
   accessToken: string;
@@ -50,14 +65,13 @@ export async function ewsSoap(params: {
   const xml = await response.text();
   const ok =
     response.ok &&
-    (/ResponseClass="Success"/.test(xml) || /<m:ResponseCode>NoError<\/m:ResponseCode>/.test(xml)) &&
-    !/<m:ResponseCode>Error/.test(xml);
+    (/ResponseClass="Success"/.test(xml) || /<(?:m:)?ResponseCode>NoError<\/(?:m:)?ResponseCode>/.test(xml)) &&
+    !/<(?:m:)?ResponseCode>Error/.test(xml);
   if (ok) return { ok: true, xml };
-  const code = xml.match(/<m:ResponseCode>([^<]+)<\/m:ResponseCode>/)?.[1];
   return {
     ok: false,
     xml,
-    error: `EWS ${params.action} failed (${response.status}${code ? ` ${code}` : ""}): ${xml.slice(0, 400)}`,
+    error: soapError(params.action, response.status, xml),
   };
 }
 
@@ -147,6 +161,10 @@ export function folderIdXml(folder: { id: string; changeKey?: string }): string 
 }
 
 const RAWJSON_SET = "2842957E-8ED9-439B-99B5-F681924BD972";
+const ASSOCIATED_PROP = `<t:ExtendedProperty>
+          <t:ExtendedFieldURI PropertyTag="0x67AA" PropertyType="Boolean"/>
+          <t:Value>true</t:Value>
+        </t:ExtendedProperty>`;
 
 export async function findItemBySubject(params: {
   userEmail: string;
@@ -154,11 +172,13 @@ export async function findItemBySubject(params: {
   folder: { id: string; changeKey?: string };
   subject: string;
 }): Promise<{ id: string; changeKey?: string } | null> {
-  const result = await ewsSoap({
-    userEmail: params.userEmail,
-    accessToken: params.accessToken,
-    action: "FindItem",
-    bodyXml: `<m:FindItem Traversal="Shallow">
+  // Contents table first — roaming signature HTML lives there, not as FAIs.
+  for (const traversal of ["Shallow", "Associated"] as const) {
+    const result = await ewsSoap({
+      userEmail: params.userEmail,
+      accessToken: params.accessToken,
+      action: "FindItem",
+      bodyXml: `<m:FindItem Traversal="${traversal}">
       <m:ItemShape>
         <t:BaseShape>IdOnly</t:BaseShape>
         <t:AdditionalProperties>
@@ -176,9 +196,98 @@ export async function findItemBySubject(params: {
       </m:Restriction>
       <m:ParentFolderIds>${folderIdXml(params.folder)}</m:ParentFolderIds>
     </m:FindItem>`,
+    });
+    if (result.ok) {
+      const id = parseItemId(result.xml);
+      if (id) return id;
+    }
+  }
+  return null;
+}
+
+function rawJsonProperty(rawJson: string): string {
+  return `<t:ExtendedProperty>
+            <t:ExtendedFieldURI PropertySetId="${RAWJSON_SET}" PropertyName="RawJSON" PropertyType="String"/>
+            <t:Value>${encodeXml(rawJson)}</t:Value>
+          </t:ExtendedProperty>`;
+}
+
+function itemInner(params: {
+  itemClass: string;
+  subject: string;
+  rawJson: string;
+  bodyHtml?: string;
+  associated?: boolean;
+}): string {
+  const body = params.bodyHtml
+    ? `<t:Body BodyType="HTML">${encodeXml(params.bodyHtml)}</t:Body>`
+    : "";
+  return `<t:ItemClass>${encodeXml(params.itemClass)}</t:ItemClass>
+          <t:Subject>${encodeXml(params.subject)}</t:Subject>
+          ${body}
+          ${params.associated ? ASSOCIATED_PROP : ""}
+          ${rawJsonProperty(params.rawJson)}`;
+}
+
+async function createFolderItem(params: {
+  userEmail: string;
+  accessToken: string;
+  folder: { id: string; changeKey?: string };
+  wrapper: "Item" | "Message" | "PostItem";
+  messageDisposition?: boolean;
+  itemClass: string;
+  subject: string;
+  rawJson: string;
+  bodyHtml?: string;
+  associated?: boolean;
+}): Promise<EwsResult> {
+  const disposition = params.messageDisposition ? ` MessageDisposition="SaveOnly"` : "";
+  const inner = itemInner(params);
+  const wrapped =
+    params.wrapper === "Message"
+      ? `<t:Message>${inner}</t:Message>`
+      : params.wrapper === "PostItem"
+        ? `<t:PostItem>${inner}</t:PostItem>`
+        : `<t:Item>${inner}</t:Item>`;
+  return ewsSoap({
+    userEmail: params.userEmail,
+    accessToken: params.accessToken,
+    action: "CreateItem",
+    bodyXml: `<m:CreateItem${disposition}>
+      <m:SavedItemFolderId>${folderIdXml(params.folder)}</m:SavedItemFolderId>
+      <m:Items>
+        ${wrapped}
+      </m:Items>
+    </m:CreateItem>`,
   });
-  if (!result.ok) return null;
-  return parseItemId(result.xml);
+}
+
+async function updateItemClass(params: {
+  userEmail: string;
+  accessToken: string;
+  item: { id: string; changeKey?: string };
+  itemClass: string;
+}): Promise<EwsResult> {
+  return ewsSoap({
+    userEmail: params.userEmail,
+    accessToken: params.accessToken,
+    action: "UpdateItem",
+    bodyXml: `<m:UpdateItem ConflictResolution="AlwaysOverwrite">
+      <m:ItemChanges>
+        <t:ItemChange>
+          <t:ItemId Id="${encodeXml(params.item.id)}"${params.item.changeKey ? ` ChangeKey="${encodeXml(params.item.changeKey)}"` : ""}/>
+          <t:Updates>
+            <t:SetItemField>
+              <t:FieldURI FieldURI="item:ItemClass"/>
+              <t:Item>
+                <t:ItemClass>${encodeXml(params.itemClass)}</t:ItemClass>
+              </t:Item>
+            </t:SetItemField>
+          </t:Updates>
+        </t:ItemChange>
+      </m:ItemChanges>
+    </m:UpdateItem>`,
+  });
 }
 
 export async function upsertRoamingItem(params: {
@@ -188,6 +297,7 @@ export async function upsertRoamingItem(params: {
   itemClass: string;
   subject: string;
   rawJson: string;
+  bodyHtml?: string;
 }): Promise<EwsResult> {
   const existing = await findItemBySubject({
     userEmail: params.userEmail,
@@ -195,46 +305,90 @@ export async function upsertRoamingItem(params: {
     folder: params.folder,
     subject: params.subject,
   });
-  const jsonXml = encodeXml(params.rawJson);
-  const extended = `<t:ExtendedProperty>
-          <t:ExtendedFieldURI PropertySetId="${RAWJSON_SET}" PropertyName="RawJSON" PropertyType="String"/>
-          <t:Value>${jsonXml}</t:Value>
-        </t:ExtendedProperty>`;
 
   if (existing) {
-    return ewsSoap({
+    const updates: string[] = [
+      `<t:SetItemField>
+                <t:ExtendedFieldURI PropertySetId="${RAWJSON_SET}" PropertyName="RawJSON" PropertyType="String"/>
+                <t:Item>
+                  ${rawJsonProperty(params.rawJson)}
+                </t:Item>
+              </t:SetItemField>`,
+    ];
+    if (params.bodyHtml) {
+      updates.push(`<t:SetItemField>
+                <t:FieldURI FieldURI="item:Body"/>
+                <t:Item>
+                  <t:Body BodyType="HTML">${encodeXml(params.bodyHtml)}</t:Body>
+                </t:Item>
+              </t:SetItemField>`);
+    }
+    const updated = await ewsSoap({
       userEmail: params.userEmail,
       accessToken: params.accessToken,
       action: "UpdateItem",
-      bodyXml: `<m:UpdateItem ConflictResolution="AlwaysOverwrite" MessageDisposition="SaveOnly">
+      bodyXml: `<m:UpdateItem ConflictResolution="AlwaysOverwrite">
         <m:ItemChanges>
           <t:ItemChange>
             <t:ItemId Id="${encodeXml(existing.id)}"${existing.changeKey ? ` ChangeKey="${encodeXml(existing.changeKey)}"` : ""}/>
             <t:Updates>
-              <t:SetItemField>
-                <t:ExtendedFieldURI PropertySetId="${RAWJSON_SET}" PropertyName="RawJSON" PropertyType="String"/>
-                <t:Message>${extended}</t:Message>
-              </t:SetItemField>
+              ${updates.join("\n")}
             </t:Updates>
           </t:ItemChange>
         </m:ItemChanges>
       </m:UpdateItem>`,
     });
+    if (updated.ok) return updated;
   }
 
-  return ewsSoap({
-    userEmail: params.userEmail,
-    accessToken: params.accessToken,
-    action: "CreateItem",
-    bodyXml: `<m:CreateItem MessageDisposition="SaveOnly">
-      <m:SavedItemFolderId>${folderIdXml(params.folder)}</m:SavedItemFolderId>
-      <m:Items>
-        <t:Message>
-          <t:ItemClass>${encodeXml(params.itemClass)}</t:ItemClass>
-          <t:Subject>${encodeXml(params.subject)}</t:Subject>
-          ${extended}
-        </t:Message>
-      </m:Items>
-    </m:CreateItem>`,
-  });
+  const attempts: Array<{
+    wrapper: "Item" | "Message" | "PostItem";
+    messageDisposition?: boolean;
+    itemClass: string;
+    associated?: boolean;
+  }> = [
+    { wrapper: "Item", itemClass: params.itemClass },
+    { wrapper: "Message", messageDisposition: true, itemClass: params.itemClass },
+    { wrapper: "PostItem", itemClass: params.itemClass },
+    { wrapper: "Item", itemClass: "IPM.Note" },
+    { wrapper: "Item", itemClass: params.itemClass, associated: true },
+  ];
+
+  let last: EwsResult | null = null;
+  for (const attempt of attempts) {
+    const created = await createFolderItem({
+      userEmail: params.userEmail,
+      accessToken: params.accessToken,
+      folder: params.folder,
+      wrapper: attempt.wrapper,
+      messageDisposition: attempt.messageDisposition,
+      itemClass: attempt.itemClass,
+      subject: params.subject,
+      rawJson: params.rawJson,
+      bodyHtml: params.bodyHtml,
+      associated: attempt.associated,
+    });
+    if (!created.ok) {
+      last = created;
+      continue;
+    }
+    if (attempt.itemClass !== params.itemClass) {
+      const id = parseItemId(created.xml);
+      if (id) {
+        const relabeled = await updateItemClass({
+          userEmail: params.userEmail,
+          accessToken: params.accessToken,
+          item: id,
+          itemClass: params.itemClass,
+        });
+        if (!relabeled.ok) {
+          last = relabeled;
+          continue;
+        }
+      }
+    }
+    return created;
+  }
+
+  return last ?? { ok: false, xml: "", error: `EWS CreateItem failed for ${params.subject}` };
 }

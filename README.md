@@ -10,7 +10,7 @@ The production target is **Render.com**: a Docker web service, a Managed Postgre
 
 For each pending user, SignatureForge resolves `{{variables}}` from Azure AD profile fields, then writes the signature in this order:
 
-1. **Outlook roaming / cloud signatures** (what Outlook on the web and New Outlook actually load). First the OutlookCloudSettings REST API, then the mailbox SDS folders under `ApplicationDataRoot` via EWS impersonation. This also sets the default new/reply signature.
+1. **Outlook roaming / cloud signatures** (what Outlook on the web and New Outlook actually load). App-only tokens cannot call OutlookCloudSettings / substrate OWS (that path returns 401). SignatureForge writes SDS items under `ApplicationDataRoot` via EWS impersonation instead, including the HTML body plus RawJSON, and sets the default new/reply signature.
 2. **Outlook REST API v2** `PATCH /users/{id}/MailboxSettings` with `SignatureHtml` (legacy).
 3. **Microsoft Graph** `PATCH /users/{id}/mailboxSettings` with the same semantic fields.
 4. **Exchange Web Services SOAP** `UpdateUserConfiguration` on `OWA.UserOptions`, with `X-AnchorMailbox` impersonation.
