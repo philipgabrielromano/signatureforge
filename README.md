@@ -176,7 +176,11 @@ Azure AD app registration access to the storage account:
 
 Blueprint deeplink (after the repo is on GitHub):
 
-https://dashboard.render.com/blueprint/new?repo=YOUR_GITHUB_REPO_URL
+https://dashboard.render.com/blueprint/new?repo=https://github.com/philipgabrielromano/signatureforge
+
+The Blueprint provisions a **Basic 256 MB** Postgres instance (`basic-256mb`). Render no longer allows the legacy Postgres `starter` instance type for new databases. Web and cron services still use the `starter` compute plan.
+
+### First Deploy
 
 ### First Deploy
 
