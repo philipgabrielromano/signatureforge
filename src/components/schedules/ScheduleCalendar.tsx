@@ -61,7 +61,7 @@ export function ScheduleCalendar({ schedules }: { schedules: ScheduleItem[] }) {
         {schedules.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              No campaigns scheduled. Create one to push a seasonal signature on a start date.
+              No schedules yet.
             </CardContent>
           </Card>
         ) : (

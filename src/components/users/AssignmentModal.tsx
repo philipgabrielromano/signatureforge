@@ -63,7 +63,7 @@ export function AssignmentModal({
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            {userIds.length} selected user{userIds.length === 1 ? "" : "s"} will receive this template on the next mailbox push.
+            {userIds.length} selected
           </p>
           <div className="space-y-1.5">
             <Label>Template</Label>

@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     jobId: job.id,
     queued: job.total,
-    message: "Users marked pending. The Render cron job will inject signatures within 5 minutes.",
+    message: "Queued.",
   });
 }
 

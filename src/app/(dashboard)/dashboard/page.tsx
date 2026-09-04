@@ -38,7 +38,7 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <Header title="Dashboard" subtitle="Mailbox signature health across Microsoft 365" />
+      <Header title="Dashboard" />
       <div className="space-y-6 p-4 lg:p-8">
         <div className="flex flex-wrap gap-2">
           <UserSyncButton />
@@ -47,23 +47,12 @@ export default async function DashboardPage() {
           </Button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatsCard title="Total users" value={String(userCount)} hint="Synced from Azure AD" icon={Users} />
+          <StatsCard title="Total users" value={String(userCount)} icon={Users} />
+          <StatsCard title="Deployed (24h)" value={String(deployed24h)} icon={FileSignature} />
+          <StatsCard title="Active schedules" value={String(activeSchedules)} icon={CalendarClock} />
           <StatsCard
-            title="Signatures deployed (24h)"
-            value={String(deployed24h)}
-            hint="Successful Graph/EWS writes"
-            icon={FileSignature}
-          />
-          <StatsCard
-            title="Active schedules"
-            value={String(activeSchedules)}
-            hint="Campaigns waiting or live"
-            icon={CalendarClock}
-          />
-          <StatsCard
-            title="Last directory sync"
+            title="Last sync"
             value={tenant.lastSyncAt ? formatDistanceToNow(tenant.lastSyncAt, { addSuffix: true }) : "Never"}
-            hint={tenant.syncEnabled ? `Every ${tenant.syncFrequencyMinutes} min` : "Auto-sync off"}
             icon={RefreshCw}
           />
         </div>

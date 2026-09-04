@@ -50,7 +50,7 @@ export function AssignmentsClient({
       toast.error(data.error || "Could not create assignment");
       return;
     }
-    toast.success("Assignment saved. Matching users are pending injection.");
+    toast.success("Assignment saved.");
     window.location.reload();
   }
 
@@ -126,7 +126,7 @@ export function AssignmentsClient({
             {assignments.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                  No assignments yet. Org-wide Corporate Standard is a good first rule.
+                  No assignments yet.
                 </TableCell>
               </TableRow>
             ) : (

@@ -30,7 +30,7 @@ export function DeployProgress({ autoStart }: { autoStart?: boolean }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Deploy failed");
-      toast.success(`Injected ${data.succeeded} mailbox${data.succeeded === 1 ? "" : "es"}. Remaining: ${data.remaining}.`);
+      toast.success(`Deployed ${data.succeeded}. Remaining: ${data.remaining}.`);
       await poll();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Deploy failed");
@@ -53,10 +53,7 @@ export function DeployProgress({ autoStart }: { autoStart?: boolean }) {
     <div className="space-y-3 rounded-xl border bg-card p-5">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium">Mailbox injection health</p>
-          <p className="text-xs text-muted-foreground">
-            Direct Graph / EWS writes — no transport rules. Cron retries pending mailboxes every 5 minutes.
-          </p>
+          <p className="text-sm font-medium">Signatures</p>
         </div>
         <Button size="sm" disabled={running} onClick={deployAll}>
           {running ? "Deploying…" : "Deploy all"}

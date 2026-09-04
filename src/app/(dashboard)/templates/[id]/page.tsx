@@ -11,7 +11,7 @@ export default async function EditTemplatePage({ params }: { params: { id: strin
 
   return (
     <>
-      <Header title={template.name} subtitle="Saving marks assigned users pending. Cron injects within 5 minutes." />
+      <Header title={template.name} />
       <div className="p-4 lg:p-8">
         <TemplateEditor
           initial={{

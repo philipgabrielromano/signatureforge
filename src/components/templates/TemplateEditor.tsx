@@ -187,9 +187,9 @@ export function TemplateEditor({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Save failed");
       if (data.unsafeImageUrls?.length) {
-        toast.warning("Saved, but some images are not public HTTPS URLs. Outlook cannot load them.");
+        toast.warning("Saved, but some image URLs aren't public HTTPS.");
       } else {
-        toast.success(deploy ? "Saved. Assigned users are queued for mailbox injection." : "Draft saved.");
+        toast.success(deploy ? "Saved and queued." : "Draft saved.");
       }
       if (!initial?.id && data.template?.id) {
         window.location.href = `/templates/${data.template.id}`;
@@ -234,11 +234,8 @@ export function TemplateEditor({
 
       {unsafe.length > 0 ? (
         <Alert variant="warning">
-          <AlertTitle>Non-public image URLs detected</AlertTitle>
-          <AlertDescription>
-            Outlook can only load absolute HTTPS images (Azure Blob or CDN). Relative, localhost, and data URLs will
-            break in mail clients: {unsafe.join(", ")}
-          </AlertDescription>
+          <AlertTitle>Images won't load</AlertTitle>
+          <AlertDescription>{unsafe.join(", ")}</AlertDescription>
         </Alert>
       ) : null}
 
@@ -342,11 +339,11 @@ export function TemplateEditor({
       <Dialog open={imageOpen} onOpenChange={setImageOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Insert from Azure Blob library</DialogTitle>
+            <DialogTitle>Insert image</DialogTitle>
           </DialogHeader>
           <div className="grid max-h-80 grid-cols-2 gap-3 overflow-auto sm:grid-cols-3">
             {images.length === 0 ? (
-              <p className="col-span-full text-sm text-muted-foreground">No images yet. Upload them on the Images page.</p>
+              <p className="col-span-full text-sm text-muted-foreground">No images yet.</p>
             ) : (
               images.map((image) => (
                 <button

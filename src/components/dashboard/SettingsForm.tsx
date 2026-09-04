@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function SettingsForm({
@@ -79,17 +79,13 @@ export function SettingsForm({
     <div className="grid max-w-4xl gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Azure AD integration</CardTitle>
-          <CardDescription>
-            Application (client) credentials used for Graph user sync and mailbox injection. Admin UI login uses the
-            AZURE_AD_* environment variables on Render.
-          </CardDescription>
+          <CardTitle>Microsoft 365</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label>Status</Label>
             <p className="text-sm text-muted-foreground">
-              {graphConfigured ? "Graph credentials look populated." : "Placeholder credentials — injection will fail until you add a real app registration."}
+              {graphConfigured ? "Connected" : "Not connected"}
             </p>
           </div>
           <div className="space-y-1.5">
@@ -116,14 +112,10 @@ export function SettingsForm({
       <Card>
         <CardHeader>
           <CardTitle>Directory sync</CardTitle>
-          <CardDescription>The Render cron job runs every 5 minutes and syncs when this interval has elapsed.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Automatic sync</p>
-              <p className="text-xs text-muted-foreground">Pull users from Microsoft Graph.</p>
-            </div>
+            <p className="text-sm font-medium">Automatic sync</p>
             <Switch checked={syncEnabled} onCheckedChange={setSyncEnabled} />
           </div>
           <div className="max-w-xs space-y-1.5">
@@ -144,38 +136,31 @@ export function SettingsForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Signature push</CardTitle>
-          <CardDescription>Injection is a mailbox API write. Never a transport rule, connector, or journal.</CardDescription>
+          <CardTitle>Deploy</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Auto-deploy on save</p>
-              <p className="text-xs text-muted-foreground">Mark assigned users pending when a template is saved.</p>
-            </div>
+            <p className="text-sm font-medium">Auto-deploy on save</p>
             <Switch checked={autoDeploy} onCheckedChange={setAutoDeploy} />
           </div>
           <div className="max-w-xs space-y-1.5">
-            <Label>Batch size per cron tick</Label>
+            <Label>Batch size</Label>
             <Input type="number" min={1} max={200} value={batchSize} onChange={(e) => setBatchSize(e.target.value)} />
           </div>
-          <Button onClick={() => save()}>Save push settings</Button>
+          <Button onClick={() => save()}>Save deploy settings</Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Azure Blob Storage</CardTitle>
-          <CardDescription>
-            These values come from Render environment variables. The container must allow anonymous blob read so Outlook can load images.
-          </CardDescription>
+          <CardTitle>Image storage</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p>Account: {storage.accountName || "not set"}</p>
           <p>Container: {storage.containerName || "not set"}</p>
           <p className="break-all">Public URL: {storage.publicUrl || "not set"}</p>
           <p className="text-muted-foreground">
-            {storageConfigured ? "Credentials are present." : "Not configured — image uploads are disabled."}
+            {storageConfigured ? "Connected" : "Not configured"}
           </p>
           <Button type="button" variant="outline" onClick={() => test("storage")}>
             Test connection
@@ -203,7 +188,6 @@ export function SettingsForm({
       <Card className="border-red-200">
         <CardHeader>
           <CardTitle>Danger zone</CardTitle>
-          <CardDescription>These actions do not call Microsoft Graph. They only reset local assignment and sync state.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button variant="destructive" onClick={() => save({ danger: "reset-assignments" })}>

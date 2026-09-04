@@ -27,7 +27,7 @@ export default async function UsersPage() {
 
   return (
     <>
-      <Header title="Users" subtitle="Directory identities and mailbox injection status" />
+      <Header title="Users" />
       <div className="space-y-4 p-4 lg:p-8">
         <div className="flex justify-end">
           <UserSyncButton />

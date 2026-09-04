@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "Azure Blob Storage is not configured. Set AZURE_STORAGE_ACCOUNT_NAME, AZURE_STORAGE_ACCOUNT_KEY, AZURE_STORAGE_CONTAINER_NAME, and AZURE_STORAGE_PUBLIC_URL. Render's filesystem is ephemeral — local uploads are not supported.",
+          "Image storage isn't configured.",
       },
       { status: 400 }
     );

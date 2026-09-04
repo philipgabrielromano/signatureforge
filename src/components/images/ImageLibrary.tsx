@@ -22,7 +22,7 @@ export function ImageLibrary({
 }) {
   async function copy(url: string) {
     await navigator.clipboard.writeText(url);
-    toast.success("Public Azure URL copied.");
+    toast.success("URL copied.");
   }
 
   async function remove(id: string) {
@@ -32,14 +32,14 @@ export function ImageLibrary({
       toast.error(data.error || "Delete failed");
       return;
     }
-    toast.success("Deleted from Azure Blob and the library.");
+    toast.success("Deleted.");
     onChanged();
   }
 
   if (images.length === 0) {
     return (
       <div className="rounded-xl border bg-card py-12 text-center text-sm text-muted-foreground">
-        No signature images yet. Upload logos, banners, and social icons here so templates can embed absolute HTTPS URLs.
+        No images yet.
       </div>
     );
   }

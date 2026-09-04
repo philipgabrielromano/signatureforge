@@ -17,7 +17,7 @@ export default async function TemplatesPage() {
 
   return (
     <>
-      <Header title="Templates" subtitle="HTML signatures pushed directly into Outlook mailboxes" />
+      <Header title="Templates" />
       <div className="space-y-6 p-4 lg:p-8">
         <div className="flex justify-end">
           <Button asChild>
@@ -27,9 +27,6 @@ export default async function TemplatesPage() {
         {templates.length === 0 ? (
           <div className="rounded-xl border bg-card py-16 text-center">
             <p className="font-medium">No templates yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Create a corporate standard, then assign it org-wide or by department.
-            </p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

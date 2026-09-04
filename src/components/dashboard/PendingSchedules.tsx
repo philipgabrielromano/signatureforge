@@ -24,7 +24,7 @@ export function PendingSchedules({
       </CardHeader>
       <CardContent className="space-y-3">
         {schedules.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No upcoming campaigns. Holiday and event signatures are scheduled here.</p>
+          <p className="text-sm text-muted-foreground">None scheduled.</p>
         ) : (
           schedules.map((schedule) => (
             <div key={schedule.id} className="flex items-center justify-between gap-3 border-b pb-3 last:border-0 last:pb-0">

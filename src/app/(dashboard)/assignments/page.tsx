@@ -21,7 +21,7 @@ export default async function AssignmentsPage() {
 
   return (
     <>
-      <Header title="Assignments" subtitle="Highest priority match wins. Org-wide is the fallback." />
+      <Header title="Assignments" />
       <div className="p-4 lg:p-8">
         <AssignmentsClient
           assignments={assignments.map((a) => ({

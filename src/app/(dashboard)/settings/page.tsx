@@ -11,7 +11,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <Header title="Settings" subtitle="Azure AD, Graph injection, Blob storage, and tenant identity" />
+      <Header title="Settings" />
       <div className="p-4 lg:p-8">
         <SettingsForm
           tenant={{

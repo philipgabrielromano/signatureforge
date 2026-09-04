@@ -11,7 +11,7 @@ export default async function TemplatePreviewPage({ params }: { params: { id: st
 
   return (
     <>
-      <Header title={`Preview · ${template.name}`} subtitle="Exact HTML that will be written to Exchange" />
+      <Header title={`Preview · ${template.name}`} />
       <div className="space-y-6 p-4 lg:p-8">
         <SignaturePreview html={template.htmlContent} mode="desktop" />
         <SignaturePreview html={template.htmlContent} mode="mobile" />

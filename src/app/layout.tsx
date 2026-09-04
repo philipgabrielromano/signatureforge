@@ -16,8 +16,7 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "SignatureForge",
-  description:
-    "Microsoft 365 email signature management. Inject roaming signatures directly into mailboxes via Graph and EWS — no transport rules.",
+  description: "Email signatures",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

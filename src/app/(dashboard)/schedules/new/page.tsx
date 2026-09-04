@@ -15,7 +15,7 @@ export default async function NewSchedulePage() {
 
   return (
     <>
-      <Header title="New schedule" subtitle="Overlapping campaigns targeting the same users will warn before save" />
+      <Header title="New schedule" />
       <div className="p-4 lg:p-8">
         <ScheduleForm templates={templates} />
       </div>

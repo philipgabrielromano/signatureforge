@@ -72,7 +72,7 @@ export function UserTable({
       toast.error(data.error || "Deploy failed");
       return;
     }
-    toast.success(`Processed ${data.processed} mailbox${data.processed === 1 ? "" : "es"}.`);
+    toast.success(`Processed ${data.processed}.`);
     window.location.reload();
   }
 
@@ -150,7 +150,7 @@ export function UserTable({
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
-                  No users match these filters. Sync from Azure AD or seed the database.
+                  No users match these filters.
                 </TableCell>
               </TableRow>
             ) : (

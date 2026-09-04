@@ -17,7 +17,7 @@ export default async function SchedulesPage() {
 
   return (
     <>
-      <Header title="Schedules" subtitle="Time-bound signature campaigns activated by the Render cron job" />
+      <Header title="Schedules" />
       <div className="space-y-4 p-4 lg:p-8">
         <div className="flex justify-end">
           <Button asChild>

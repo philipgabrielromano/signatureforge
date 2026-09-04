@@ -18,7 +18,7 @@ export default async function AuditPage() {
 
   return (
     <>
-      <Header title="Audit log" subtitle="Every template change, sync, and mailbox injection attempt" />
+      <Header title="Audit log" />
       <div className="p-4 lg:p-8">
         <AuditClient
           initialLogs={logs.map((log) => ({

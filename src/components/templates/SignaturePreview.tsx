@@ -17,7 +17,7 @@ export function SignaturePreview({
   return (
     <div className="rounded-lg border bg-slate-100 p-4">
       <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
-        <span>Outlook compose window</span>
+        <span>Preview</span>
         <span className="uppercase tracking-wide">{mode}</span>
       </div>
       <div

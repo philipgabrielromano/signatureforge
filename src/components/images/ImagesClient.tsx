@@ -35,11 +35,8 @@ export function ImagesClient({
     <div className="space-y-6">
       {!storageConfigured ? (
         <Alert variant="warning">
-          <AlertTitle>Azure Blob Storage is not configured</AlertTitle>
-          <AlertDescription>
-            Set AZURE_STORAGE_ACCOUNT_NAME, AZURE_STORAGE_ACCOUNT_KEY, AZURE_STORAGE_CONTAINER_NAME, and
-            AZURE_STORAGE_PUBLIC_URL. Uploads never write to Render&apos;s ephemeral disk.
-          </AlertDescription>
+          <AlertTitle>Image storage isn't configured</AlertTitle>
+          <AlertDescription>Uploads are disabled until storage is set in Settings.</AlertDescription>
         </Alert>
       ) : null}
       <ImageUploader disabled={!storageConfigured} onUploaded={refresh} />

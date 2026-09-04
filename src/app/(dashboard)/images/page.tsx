@@ -15,7 +15,7 @@ export default async function ImagesPage() {
 
   return (
     <>
-      <Header title="Image library" subtitle="Public Azure Blob URLs for logos and banners in signatures" />
+      <Header title="Image library" />
       <div className="p-4 lg:p-8">
         <ImagesClient
           storageConfigured={isAzureStorageConfigured()}

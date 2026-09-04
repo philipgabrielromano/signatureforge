@@ -24,9 +24,7 @@ export function VariableInserter({ onInsert }: { onInsert: (token: string) => vo
           <DropdownMenuItem key={item.token} onSelect={() => onInsert(item.token)}>
             <div>
               <p className="font-medium">{item.label}</p>
-              <p className="text-xs text-muted-foreground">
-                {item.token} · {item.description}
-              </p>
+              <p className="text-xs text-muted-foreground">{item.token}</p>
             </div>
           </DropdownMenuItem>
         ))}

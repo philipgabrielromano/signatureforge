@@ -20,7 +20,7 @@ export function UserSyncButton() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Sync failed");
       setResult(`Added ${data.added}, updated ${data.updated}, unchanged ${data.unchanged}.`);
-      toast.success("Directory sync complete.");
+      toast.success("Synced.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Sync failed";
       setResult(message);
@@ -39,12 +39,10 @@ export function UserSyncButton() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Azure AD directory sync</DialogTitle>
+            <DialogTitle>Sync users</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            {running
-              ? "Pulling users from Microsoft Graph. Pagination is handled automatically."
-              : result}
+            {running ? "Syncing…" : result}
           </p>
           {!running && result?.startsWith("Added") ? (
             <Button onClick={() => window.location.reload()}>Refresh table</Button>

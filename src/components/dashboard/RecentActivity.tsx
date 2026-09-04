@@ -19,7 +19,7 @@ export function RecentActivity({
       </CardHeader>
       <CardContent className="space-y-3">
         {logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No audit events yet. Saving a template or syncing users will show up here.</p>
+          <p className="text-sm text-muted-foreground">No activity yet.</p>
         ) : (
           logs.map((log) => (
             <div key={log.id} className="flex items-start justify-between gap-3 border-b pb-3 last:border-0 last:pb-0">

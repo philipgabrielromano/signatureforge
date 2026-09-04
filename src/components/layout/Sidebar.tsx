@@ -37,7 +37,6 @@ export function Sidebar() {
         </div>
         <div>
           <p className="text-sm font-semibold tracking-tight">SignatureForge</p>
-          <p className="text-[11px] text-slate-400">Microsoft 365 signatures</p>
         </div>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
@@ -61,9 +60,6 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="border-t border-sidebar-border p-4 text-[11px] leading-relaxed text-slate-400">
-        Signatures inject directly into each mailbox via Microsoft Graph and EWS. No transport rules. No connectors.
-      </div>
     </aside>
   );
 }

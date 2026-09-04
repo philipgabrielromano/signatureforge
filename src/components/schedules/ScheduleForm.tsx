@@ -55,7 +55,7 @@ export function ScheduleForm({
         return;
       }
       if (!res.ok) throw new Error(data.error || "Could not create schedule");
-      toast.success("Schedule created. The cron job will activate it at the start time.");
+      toast.success("Schedule created.");
       router.push("/schedules");
       router.refresh();
     } catch (error) {
@@ -114,7 +114,6 @@ export function ScheduleForm({
       <div className="flex items-center justify-between rounded-lg border p-3">
         <div>
           <p className="text-sm font-medium">Organization-wide</p>
-          <p className="text-xs text-muted-foreground">Push to every mailbox in the tenant.</p>
         </div>
         <Switch checked={orgWide} onCheckedChange={setOrgWide} />
       </div>

@@ -26,7 +26,7 @@ export function ImageUploader({ disabled, onUploaded }: { disabled?: boolean; on
       const res = await fetch("/api/images", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
-      toast.success("Uploaded to Azure Blob Storage.");
+      toast.success("Uploaded.");
       setFile(null);
       setAlt("");
       onUploaded();
@@ -79,10 +79,7 @@ export function ImageUploader({ disabled, onUploaded }: { disabled?: boolean; on
           {uploading ? "Uploading…" : "Upload"}
         </Button>
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">
-        PNG, JPEG, GIF, WebP, or SVG. Max 5 MB. Files are stored in Azure Blob Storage with a durable read URL so
-        Outlook can fetch them. Render disk is never used.
-      </p>
+      <p className="mt-3 text-xs text-muted-foreground">PNG, JPEG, GIF, WebP, or SVG. Max 5 MB.</p>
       {file ? <p className="mt-2 text-sm text-muted-foreground">Selected: {file.name}</p> : null}
     </div>
   );
