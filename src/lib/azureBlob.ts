@@ -7,6 +7,7 @@ import {
   generateBlobSASQueryParameters,
 } from "@azure/storage-blob";
 import { randomUUID } from "crypto";
+import { escapeHtmlAttr, unescapeHtmlAttr } from "@/lib/utils";
 
 const READ_SAS_MINUTES = 10 * 365 * 24 * 60;
 
@@ -151,13 +152,15 @@ export async function withSignedImageUrls(html: string): Promise<string> {
   const seen = new Set<string>();
   for (const match of matches) {
     const src = match[1];
-    if (!src || seen.has(src) || isSignedBlobUrl(src)) continue;
+    if (!src || seen.has(src)) continue;
     seen.add(src);
-    const blobName = blobNameFromPublicUrl(src);
+    const decoded = unescapeHtmlAttr(src);
+    if (isSignedBlobUrl(decoded)) continue;
+    const blobName = blobNameFromPublicUrl(decoded);
     if (!blobName) continue;
     try {
       const signed = await getDurablePublicUrl(blobName);
-      result = result.replaceAll(src, signed);
+      result = result.replaceAll(src, escapeHtmlAttr(signed));
     } catch (error) {
       console.warn("[azure-blob] Could not sign image URL", src, error);
     }

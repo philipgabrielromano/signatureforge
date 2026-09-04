@@ -34,7 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VariableInserter } from "./VariableInserter";
 import { SignaturePreview } from "./SignaturePreview";
-import { findUnsafeImageUrls } from "@/lib/utils";
+import { escapeHtmlAttr, findUnsafeImageUrls } from "@/lib/utils";
 import { SAMPLE_USER, type UserWithProfile } from "@/lib/variables";
 import { toast } from "sonner";
 
@@ -355,7 +355,7 @@ export function TemplateEditor({
                   className="overflow-hidden rounded-md border p-2 text-left hover:border-primary"
                   onClick={() => {
                     insert(
-                      `<img src="${image.publicUrl}" alt="${image.altText || image.originalName}" />`
+                      `<img src="${escapeHtmlAttr(image.publicUrl)}" alt="${escapeHtmlAttr(image.altText || image.originalName)}" />`
                     );
                     setImageOpen(false);
                   }}
