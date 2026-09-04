@@ -1,0 +1,180 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Tenant {
+  id                   String    @id @default(cuid())
+  name                 String
+  domain               String    @unique
+  azureClientId        String
+  azureClientSecret    String
+  azureTenantId        String
+  syncEnabled          Boolean   @default(true)
+  syncFrequencyMinutes Int       @default(60)
+  lastSyncAt           DateTime?
+  autoDeployOnSave     Boolean   @default(true)
+  deployBatchSize      Int       @default(50)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  users                User[]
+  templates            Template[]
+  assignments          Assignment[]
+  schedules            Schedule[]
+  auditLogs            AuditLog[]
+  images               SignatureImage[]
+}
+
+model User {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  tenant                Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  azureObjectId         String
+  email                 String
+  displayName           String
+  firstName             String?
+  lastName              String?
+  jobTitle              String?
+  department            String?
+  phone                 String?
+  mobile                String?
+  officeLocation        String?
+  companyName           String?
+  customField1          String?
+  customField2          String?
+  customField3          String?
+  currentSignatureId    String?
+  currentSignature      Template? @relation("CurrentSignature", fields: [currentSignatureId], references: [id])
+  lastSignaturePushedAt DateTime?
+  signaturePushStatus   String    @default("pending")
+  signaturePushError    String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([tenantId, azureObjectId])
+  @@unique([tenantId, email])
+  @@index([tenantId, signaturePushStatus])
+  @@index([tenantId, department])
+}
+
+model Template {
+  id               String            @id @default(cuid())
+  tenantId         String
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?
+  htmlContent      String            @db.Text
+  previewUrl       String?
+  isDefault        Boolean           @default(false)
+  isActive         Boolean           @default(true)
+  version          Int               @default(1)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  assignments      Assignment[]
+  schedules        Schedule[]
+  currentUsers     User[]            @relation("CurrentSignature")
+  templateVersions TemplateVersion[]
+}
+
+model TemplateVersion {
+  id          String   @id @default(cuid())
+  templateId  String
+  template    Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  version     Int
+  htmlContent String   @db.Text
+  changedBy   String
+  createdAt   DateTime @default(now())
+
+  @@index([templateId, version])
+}
+
+model Assignment {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  templateId  String
+  template    Template @relation(fields: [templateId], references: [id])
+  isOrgWide   Boolean  @default(false)
+  targetType  String?
+  targetValue String?
+  priority    Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, isActive])
+}
+
+model Schedule {
+  id               String    @id @default(cuid())
+  tenantId         String
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  templateId       String
+  template         Template  @relation(fields: [templateId], references: [id])
+  name             String
+  description      String?
+  targetType       String?
+  targetValue      String?
+  isOrgWide        Boolean   @default(false)
+  startAt          DateTime
+  endAt            DateTime?
+  revertTemplateId String?
+  status           String    @default("scheduled")
+  deployedAt       DateTime?
+  revertedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([tenantId, status])
+  @@index([startAt, endAt])
+}
+
+model SignatureImage {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  publicUrl    String
+  altText      String?
+  uploadedBy   String
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorEmail   String
+  action       String
+  resourceType String
+  resourceId   String?
+  details      Json?
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, action])
+}
+
+model DeployJob {
+  id          String   @id @default(cuid())
+  tenantId    String
+  status      String   @default("running")
+  total       Int      @default(0)
+  completed   Int      @default(0)
+  succeeded   Int      @default(0)
+  failed      Int      @default(0)
+  startedAt   DateTime @default(now())
+  finishedAt  DateTime?
+  lastError   String?
+}
