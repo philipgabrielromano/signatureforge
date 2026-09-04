@@ -32,7 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { VariableInserter } from "./VariableInserter";
+import { PreviewUserPicker } from "./PreviewUserPicker";
 import { SignaturePreview } from "./SignaturePreview";
 import { escapeHtmlAttr, findUnsafeImageUrls } from "@/lib/utils";
 import { SAMPLE_USER, type UserWithProfile } from "@/lib/variables";
@@ -89,8 +89,6 @@ type ImageItem = {
   altText?: string | null;
 };
 
-type UserOption = UserWithProfile & { id: string };
-
 export function TemplateEditor({
   initial,
 }: {
@@ -109,7 +107,6 @@ export function TemplateEditor({
   const [htmlMode, setHtmlMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
-  const [users, setUsers] = useState<UserOption[]>([]);
   const [previewUser, setPreviewUser] = useState<UserWithProfile>(SAMPLE_USER);
   const [images, setImages] = useState<ImageItem[]>([]);
   const [imageOpen, setImageOpen] = useState(false);
@@ -144,10 +141,6 @@ export function TemplateEditor({
   });
 
   useEffect(() => {
-    fetch("/api/users")
-      .then((r) => r.json())
-      .then((data) => setUsers(data.users ?? []))
-      .catch(() => undefined);
     fetch("/api/images")
       .then((r) => r.json())
       .then((data) => setImages(data.images ?? []))
@@ -309,22 +302,7 @@ export function TemplateEditor({
 
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Select
-              onValueChange={(id) => {
-                const found = users.find((u) => u.id === id);
-                setPreviewUser(found ?? SAMPLE_USER);
-              }}
-            >
-              <SelectTrigger className="w-[220px]"><SelectValue placeholder="Preview as sample user" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sample">Alex Rivera (sample)</SelectItem>
-                {users.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.displayName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <PreviewUserPicker value={previewUser} onChange={setPreviewUser} />
             <Button variant={previewMode === "desktop" ? "default" : "outline"} size="sm" onClick={() => setPreviewMode("desktop")}>
               Desktop
             </Button>

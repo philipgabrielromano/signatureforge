@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
   const q = searchParams.get("q")?.trim() || "";
   const department = searchParams.get("department") || "";
   const status = searchParams.get("status") || "";
+  const parsedLimit = Number(searchParams.get("limit"));
+  const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : undefined;
 
   const users = await prisma.user.findMany({
     where: {
@@ -32,6 +34,7 @@ export async function GET(request: NextRequest) {
     },
     include: { currentSignature: true },
     orderBy: { displayName: "asc" },
+    ...(limit ? { take: limit } : {}),
   });
 
   const departments = await prisma.user.findMany({
