@@ -12,7 +12,12 @@ export type AzureTenantConfig = {
 
 export type InjectResult = {
   success: boolean;
-  method: "outlook-rest-v2" | "graph-mailboxsettings" | "ews-soap" | "none";
+  method:
+    | "roaming-cloud"
+    | "outlook-rest-v2"
+    | "graph-mailboxsettings"
+    | "ews-soap"
+    | "none";
   error?: string;
 };
 

@@ -8,13 +8,14 @@ The production target is **Render.com**: a Docker web service, a Managed Postgre
 
 ## How signature injection works
 
-For each pending user, SignatureForge resolves `{{variables}}` from Azure AD profile fields, then tries three mailbox APIs in order:
+For each pending user, SignatureForge resolves `{{variables}}` from Azure AD profile fields, then writes the signature in this order:
 
-1. **Outlook REST API v2** `PATCH /users/{id}/MailboxSettings` with `SignatureHtml`, `AutoAddSignature`, `SignatureForNewMessage`, and `SignatureForReply`.
-2. **Microsoft Graph** `PATCH /users/{id}/mailboxSettings` with the same semantic fields (newer Outlook clients).
-3. **Exchange Web Services SOAP** `UpdateUserConfiguration` on `OWA.UserOptions`, with `X-AnchorMailbox` impersonation.
+1. **Outlook roaming / cloud signatures** (what Outlook on the web and New Outlook actually load) via `OutlookCloudSettings`, including HTML, plain text, and the default new/reply signature.
+2. **Outlook REST API v2** `PATCH /users/{id}/MailboxSettings` with `SignatureHtml` (legacy).
+3. **Microsoft Graph** `PATCH /users/{id}/mailboxSettings` with the same semantic fields.
+4. **Exchange Web Services SOAP** `UpdateUserConfiguration` on `OWA.UserOptions`, with `X-AnchorMailbox` impersonation.
 
-A failure on one user is recorded (`signaturePushStatus = failed`) and processing continues. The cron job retries pending and failed mailboxes on the next tick.
+A roaming write also still attempts the EWS legacy store so Classic Outlook can pick the same HTML up. A failure on one user is recorded (`signaturePushStatus = failed`) and processing continues. The cron job retries pending and failed mailboxes on the next tick.
 
 Application permissions required:
 
@@ -223,7 +224,7 @@ See `.env.example`. Secrets are never committed. In `render.yaml`:
 
 ## Known limitations
 
-- Graph `mailboxSettings` does not officially document `SignatureHtml`. Method 1 and the EWS fallback exist because roaming signature APIs differ by Outlook build. Test in a pilot OU before org-wide rollout.
+- Outlook on the web and New Outlook read **roaming/cloud signatures**, not the legacy `OWA.UserOptions` mailbox field. SignatureForge writes those first, then still updates the legacy store for Classic Outlook. Test in a pilot mailbox before org-wide rollout.
 - EWS app-only impersonation requires Exchange `full_access_as_app` in addition to Graph Mail permissions.
 - Image URLs in templates must be absolute `https://` Azure Blob or CDN URLs. Relative and `localhost` URLs are flagged in the editor because recipients cannot fetch them.
 - Demo mode authenticates a local admin without Entra ID. Disable `AUTH_DEMO_MODE` in production.

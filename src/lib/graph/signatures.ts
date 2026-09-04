@@ -1,5 +1,6 @@
 import type { AzureTenantConfig, InjectResult } from "@/types";
 import { getAccessToken, getGraphClient } from "./client";
+import { tryRoamingSignatures } from "./roamingSignatures";
 
 function encodeXml(value: string): string {
   return value
@@ -174,7 +175,34 @@ export async function injectSignatureForUser(params: {
     outlookToken = null;
   }
 
+  let roamingError: string | undefined;
+
   if (outlookToken) {
+    try {
+      const roaming = await tryRoamingSignatures({
+        userEmail: params.userEmail,
+        htmlContent: params.htmlContent,
+        signatureName: params.signatureName,
+        accessToken: outlookToken,
+      });
+      if (roaming.ok) {
+        try {
+          await tryEwsSoap({
+            userEmail: params.userEmail,
+            htmlContent: params.htmlContent,
+            signatureName: params.signatureName,
+            accessToken: outlookToken,
+          });
+        } catch {
+          /* classic Outlook fallback is best-effort */
+        }
+        return { success: true, method: "roaming-cloud" };
+      }
+      roamingError = roaming.error;
+    } catch (error) {
+      roamingError = error instanceof Error ? error.message : String(error);
+    }
+
     try {
       const ok = await tryOutlookRestV2({
         userId: params.userId,
@@ -218,6 +246,7 @@ export async function injectSignatureForUser(params: {
     success: false,
     method: "none",
     error:
-      "All injection methods failed (Outlook REST v2, Graph mailboxSettings, EWS SOAP). Confirm application permissions Mail.ReadWrite, MailboxSettings.ReadWrite, and Exchange full_access_as_app are granted with admin consent.",
+      roamingError ||
+      "All injection methods failed (Outlook roaming signatures, Outlook REST v2, Graph mailboxSettings, EWS SOAP). Confirm application permissions Mail.ReadWrite, MailboxSettings.ReadWrite, and Exchange full_access_as_app are granted with admin consent.",
   };
 }
