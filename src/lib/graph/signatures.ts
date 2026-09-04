@@ -199,6 +199,7 @@ export async function injectSignatureForUser(params: {
         return { success: true, method: "roaming-cloud" };
       }
       roamingError = roaming.error;
+      console.warn("[roaming] fallback", roamingError);
     } catch (error) {
       roamingError = error instanceof Error ? error.message : String(error);
     }
@@ -236,7 +237,7 @@ export async function injectSignatureForUser(params: {
         signatureName: params.signatureName,
         accessToken: outlookToken,
       });
-      if (ok) return { success: true, method: "ews-soap" };
+      if (ok) return { success: true, method: "ews-soap", warning: roamingError };
     } catch {
       /* fall through */
     }

@@ -162,7 +162,11 @@ export async function deployPendingSignatures(options: {
           action: "signature.deployed",
           resourceType: "user",
           resourceId: user.id,
-          details: { method: inject.method, templateId: template.id },
+          details: {
+            method: inject.method,
+            templateId: template.id,
+            ...(inject.warning ? { warning: inject.warning } : {}),
+          },
         });
       } else {
         await prisma.user.update({

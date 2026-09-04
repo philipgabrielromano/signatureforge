@@ -19,6 +19,7 @@ export type InjectResult = {
     | "ews-soap"
     | "none";
   error?: string;
+  warning?: string;
 };
 
 export type UserSyncResult = {

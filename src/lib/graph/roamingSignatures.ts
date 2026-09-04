@@ -1,4 +1,10 @@
 import { htmlToPlainText } from "@/lib/utils";
+import {
+  ensureChildFolder,
+  findChildFolder,
+  folderIdXml,
+  upsertRoamingItem,
+} from "@/lib/graph/ews";
 
 type CloudSetting = {
   name?: string;
@@ -188,18 +194,168 @@ export async function tryRoamingSignatures(params: {
     });
   }
 
-  if (!write.ok) {
-    return {
-      ok: false,
-      error: `Roaming signature write failed (${write.status} ${write.url}): ${write.body.slice(0, 400)}`,
-    };
+  if (write.ok) {
+    await cloudFetch(ACCOUNT_URLS(email), {
+      method: "PATCH",
+      headers,
+      body: defaultsBody,
+    });
+    return { ok: true };
   }
 
-  await cloudFetch(ACCOUNT_URLS(email), {
-    method: "PATCH",
-    headers,
-    body: defaultsBody,
-  });
+  const owsError = `OWS roaming write failed (${write.status} ${write.url}): ${write.body.slice(0, 300)}`;
+  console.warn("[roaming]", owsError);
 
+  const ews = await tryEwsRoamingStore({
+    userEmail: email,
+    accessToken: params.accessToken,
+    htmlContent: params.htmlContent,
+    text,
+    name,
+    listValue: mergedList,
+  });
+  if (ews.ok) return { ok: true };
+  return { ok: false, error: `${owsError} | ${ews.error}` };
+}
+
+const SDS_CLASS = "SDS.49499048-0129-47f5-b95e-f9d315b861a6.RoamingSetting";
+const APP_GUID = "49499048-0129-47f5-b95e-f9d315b861a6";
+
+async function tryEwsRoamingStore(params: {
+  userEmail: string;
+  accessToken: string;
+  htmlContent: string;
+  text: string;
+  name: string;
+  listValue: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const rootXml = `<t:DistinguishedFolderId Id="root"/>`;
+  const appRoot =
+    (await findChildFolder({
+      userEmail: params.userEmail,
+      accessToken: params.accessToken,
+      parentXml: rootXml,
+      displayName: "ApplicationDataRoot",
+    })) ||
+    (await findChildFolder({
+      userEmail: params.userEmail,
+      accessToken: params.accessToken,
+      parentXml: rootXml,
+      displayName: "Application Data",
+    }));
+  if (!appRoot) return { ok: false, error: "EWS roaming: ApplicationDataRoot not found" };
+
+  const guidFolder = await ensureChildFolder({
+    userEmail: params.userEmail,
+    accessToken: params.accessToken,
+    parentXml: folderIdXml(appRoot),
+    displayName: APP_GUID,
+  });
+  if (!guidFolder) return { ok: false, error: "EWS roaming: app settings folder not found" };
+
+  const accountFolder = await ensureChildFolder({
+    userEmail: params.userEmail,
+    accessToken: params.accessToken,
+    parentXml: folderIdXml(guidFolder),
+    displayName: "OutlookAccountCloudSettings",
+  });
+  if (!accountFolder) return { ok: false, error: "EWS roaming: OutlookAccountCloudSettings not found" };
+
+  const encodedName = Buffer.from(params.name, "utf8").toString("base64");
+  const accountParent = folderIdXml(accountFolder);
+  const signatureFolder =
+    (await ensureChildFolder({
+      userEmail: params.userEmail,
+      accessToken: params.accessToken,
+      parentXml: accountParent,
+      displayName: encodedName,
+    })) ||
+    (await ensureChildFolder({
+      userEmail: params.userEmail,
+      accessToken: params.accessToken,
+      parentXml: accountParent,
+      displayName: params.name,
+    }));
+  if (!signatureFolder) return { ok: false, error: "EWS roaming: could not create signature folder" };
+
+  const setting = (fields: Record<string, unknown>) =>
+    JSON.stringify({
+      itemClass: "RoamingSetting",
+      scope: params.userEmail,
+      source: "UserOverride",
+      ...fields,
+    });
+
+  const writes = [
+    upsertRoamingItem({
+      userEmail: params.userEmail,
+      accessToken: params.accessToken,
+      folder: signatureFolder,
+      itemClass: SDS_CLASS,
+      subject: "htm",
+      rawJson: setting({
+        name: params.name,
+        parentSetting: "roaming_signature_list",
+        secondaryKey: "htm",
+        type: "Blob",
+        value: params.htmlContent,
+      }),
+    }),
+    upsertRoamingItem({
+      userEmail: params.userEmail,
+      accessToken: params.accessToken,
+      folder: signatureFolder,
+      itemClass: SDS_CLASS,
+      subject: "txt",
+      rawJson: setting({
+        name: params.name,
+        parentSetting: "roaming_signature_list",
+        secondaryKey: "txt",
+        type: "Blob",
+        value: params.text,
+      }),
+    }),
+    upsertRoamingItem({
+      userEmail: params.userEmail,
+      accessToken: params.accessToken,
+      folder: accountFolder,
+      itemClass: SDS_CLASS,
+      subject: "roaming_signature_list",
+      rawJson: setting({
+        name: "roaming_signature_list",
+        secondaryKey: "roaming_signature_list",
+        type: "BlobArray",
+        value: params.listValue,
+      }),
+    }),
+    upsertRoamingItem({
+      userEmail: params.userEmail,
+      accessToken: params.accessToken,
+      folder: accountFolder,
+      itemClass: SDS_CLASS,
+      subject: "roaming_new_signature",
+      rawJson: setting({
+        name: "roaming_new_signature",
+        type: "String",
+        value: params.name,
+      }),
+    }),
+    upsertRoamingItem({
+      userEmail: params.userEmail,
+      accessToken: params.accessToken,
+      folder: accountFolder,
+      itemClass: SDS_CLASS,
+      subject: "roaming_reply_signature",
+      rawJson: setting({
+        name: "roaming_reply_signature",
+        type: "String",
+        value: params.name,
+      }),
+    }),
+  ];
+
+  const results = await Promise.all(writes);
+  const failed = results.find((result) => !result.ok);
+  if (failed) return { ok: false, error: failed.error };
   return { ok: true };
 }
