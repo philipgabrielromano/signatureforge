@@ -3,15 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { auth, unauthorizedResponse } from "@/lib/auth";
 import { getPrimaryTenant } from "@/lib/tenant";
 import { downloadImageFromBlob } from "@/lib/azureBlob";
+import { resolveParams, type RouteParams } from "@/lib/routeParams";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, { params }: RouteParams<{ id: string }>) {
+  const { id } = await resolveParams(params);
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
   const tenant = await getPrimaryTenant();
-  const image = await prisma.signatureImage.findUnique({ where: { id: params.id } });
+  const image = await prisma.signatureImage.findUnique({ where: { id } });
   if (!image || image.tenantId !== tenant.id) {
     return new NextResponse("Not found", { status: 404 });
   }

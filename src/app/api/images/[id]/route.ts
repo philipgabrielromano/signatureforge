@@ -3,18 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { auth, unauthorizedResponse } from "@/lib/auth";
 import { getPrimaryTenant, writeAudit } from "@/lib/tenant";
 import { deleteImageFromBlob } from "@/lib/azureBlob";
+import { resolveParams, type RouteParams } from "@/lib/routeParams";
 
 export const dynamic = "force-dynamic";
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams<{ id: string }>) {
+  const { id } = await resolveParams(params);
   const session = await auth();
   if (!session?.user?.email) return unauthorizedResponse();
 
   const tenant = await getPrimaryTenant();
-  const image = await prisma.signatureImage.findUnique({ where: { id: params.id } });
+  const image = await prisma.signatureImage.findUnique({ where: { id } });
   if (!image || image.tenantId !== tenant.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

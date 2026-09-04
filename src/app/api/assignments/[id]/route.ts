@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth, unauthorizedResponse } from "@/lib/auth";
 import { getPrimaryTenant, writeAudit } from "@/lib/tenant";
 import { markUsersPendingForTemplate } from "@/lib/jobs/deploySignatures";
+import { resolveParams, type RouteParams } from "@/lib/routeParams";
 
 export const dynamic = "force-dynamic";
 
@@ -16,22 +17,20 @@ const schema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: RouteParams<{ id: string }>) {
+  const { id } = await resolveParams(params);
   const session = await auth();
   if (!session?.user?.email) return unauthorizedResponse();
 
   const body = schema.parse(await request.json());
   const tenant = await getPrimaryTenant();
-  const existing = await prisma.assignment.findUnique({ where: { id: params.id } });
+  const existing = await prisma.assignment.findUnique({ where: { id } });
   if (!existing || existing.tenantId !== tenant.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const assignment = await prisma.assignment.update({
-    where: { id: params.id },
+    where: { id },
     data: body,
     include: { template: true },
   });
@@ -49,26 +48,24 @@ export async function PATCH(
   return NextResponse.json({ assignment });
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams<{ id: string }>) {
+  const { id } = await resolveParams(params);
   const session = await auth();
   if (!session?.user?.email) return unauthorizedResponse();
 
   const tenant = await getPrimaryTenant();
-  const existing = await prisma.assignment.findUnique({ where: { id: params.id } });
+  const existing = await prisma.assignment.findUnique({ where: { id } });
   if (!existing || existing.tenantId !== tenant.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  await prisma.assignment.delete({ where: { id: params.id } });
+  await prisma.assignment.delete({ where: { id } });
   await writeAudit({
     tenantId: tenant.id,
     actorEmail: session.user.email,
     action: "assignment.deleted",
     resourceType: "assignment",
-    resourceId: params.id,
+    resourceId: id,
   });
 
   return NextResponse.json({ ok: true });

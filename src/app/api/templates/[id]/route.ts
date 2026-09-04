@@ -5,6 +5,7 @@ import { auth, unauthorizedResponse } from "@/lib/auth";
 import { getPrimaryTenant, writeAudit } from "@/lib/tenant";
 import { markUsersPendingForTemplate } from "@/lib/jobs/deploySignatures";
 import { findUnsafeImageUrls } from "@/lib/utils";
+import { resolveParams, type RouteParams } from "@/lib/routeParams";
 
 export const dynamic = "force-dynamic";
 
@@ -17,15 +18,13 @@ const updateSchema = z.object({
   deploy: z.boolean().optional(),
 });
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(_request: NextRequest, { params }: RouteParams<{ id: string }>) {
+  const { id } = await resolveParams(params);
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
   const template = await prisma.template.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       templateVersions: { orderBy: { version: "desc" }, take: 10 },
       _count: { select: { currentUsers: true, assignments: true } },
@@ -39,16 +38,14 @@ export async function GET(
   return NextResponse.json({ template, unsafeImageUrls: findUnsafeImageUrls(template.htmlContent) });
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: RouteParams<{ id: string }>) {
+  const { id } = await resolveParams(params);
   const session = await auth();
   if (!session?.user?.email) return unauthorizedResponse();
 
   const body = updateSchema.parse(await request.json());
   const tenant = await getPrimaryTenant();
-  const existing = await prisma.template.findUnique({ where: { id: params.id } });
+  const existing = await prisma.template.findUnique({ where: { id } });
   if (!existing || existing.tenantId !== tenant.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -57,7 +54,7 @@ export async function PATCH(
   const nextVersion = htmlChanged ? existing.version + 1 : existing.version;
 
   const template = await prisma.template.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       name: body.name,
       description: body.description,
@@ -107,26 +104,24 @@ export async function PATCH(
   });
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams<{ id: string }>) {
+  const { id } = await resolveParams(params);
   const session = await auth();
   if (!session?.user?.email) return unauthorizedResponse();
 
   const tenant = await getPrimaryTenant();
-  const existing = await prisma.template.findUnique({ where: { id: params.id } });
+  const existing = await prisma.template.findUnique({ where: { id } });
   if (!existing || existing.tenantId !== tenant.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  await prisma.template.delete({ where: { id: params.id } });
+  await prisma.template.delete({ where: { id } });
   await writeAudit({
     tenantId: tenant.id,
     actorEmail: session.user.email,
     action: "template.deleted",
     resourceType: "template",
-    resourceId: params.id,
+    resourceId: id,
     details: { name: existing.name },
   });
 
