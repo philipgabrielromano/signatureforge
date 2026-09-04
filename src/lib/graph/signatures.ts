@@ -1,6 +1,16 @@
 import type { AzureTenantConfig, InjectResult } from "@/types";
 import { getAccessToken, getGraphClient } from "./client";
-import { tryRoamingSignatures } from "./roamingSignatures";
+import { tryGraphUserConfig } from "./owaUserConfig";
+
+/**
+ * OWA and New Outlook read roaming (cloud) signatures by default, which have
+ * no app-accessible API: substrate OWS rejects app tokens (401) and Exchange
+ * refuses EWS writes into the SDS store ("Cannot save changes ... to store").
+ * The tenant must postpone roaming signatures so clients read the legacy
+ * store this app writes: Set-OrganizationConfig -PostponeRoamingSignaturesUntilLater $true
+ */
+export const ROAMING_POSTPONE_HINT =
+  "If OWA/New Outlook does not show this signature, run: Set-OrganizationConfig -PostponeRoamingSignaturesUntilLater $true (roaming signatures have no app-accessible API).";
 
 function encodeXml(value: string): string {
   return value
@@ -168,6 +178,24 @@ export async function injectSignatureForUser(params: {
   signatureName: string;
   tenantConfig: AzureTenantConfig;
 }): Promise<InjectResult> {
+  let graphError: string | undefined;
+
+  try {
+    const graphToken = await getAccessToken(params.tenantConfig, "graph");
+    const config = await tryGraphUserConfig({
+      userId: params.userId,
+      htmlContent: params.htmlContent,
+      accessToken: graphToken,
+    });
+    if (config.ok) {
+      return { success: true, method: "graph-userconfig", warning: ROAMING_POSTPONE_HINT };
+    }
+    graphError = config.error;
+    console.warn("[userconfig] fallback", graphError);
+  } catch (error) {
+    graphError = error instanceof Error ? error.message : String(error);
+  }
+
   let outlookToken: string | null = null;
   try {
     outlookToken = await getAccessToken(params.tenantConfig, "outlook");
@@ -175,33 +203,17 @@ export async function injectSignatureForUser(params: {
     outlookToken = null;
   }
 
-  let roamingError: string | undefined;
-
   if (outlookToken) {
     try {
-      const roaming = await tryRoamingSignatures({
+      const ok = await tryEwsSoap({
         userEmail: params.userEmail,
         htmlContent: params.htmlContent,
         signatureName: params.signatureName,
         accessToken: outlookToken,
       });
-      if (roaming.ok) {
-        try {
-          await tryEwsSoap({
-            userEmail: params.userEmail,
-            htmlContent: params.htmlContent,
-            signatureName: params.signatureName,
-            accessToken: outlookToken,
-          });
-        } catch {
-          /* classic Outlook fallback is best-effort */
-        }
-        return { success: true, method: "roaming-cloud" };
-      }
-      roamingError = roaming.error;
-      console.warn("[roaming] fallback", roamingError);
-    } catch (error) {
-      roamingError = error instanceof Error ? error.message : String(error);
+      if (ok) return { success: true, method: "ews-soap", warning: ROAMING_POSTPONE_HINT };
+    } catch {
+      /* fall through */
     }
 
     try {
@@ -229,25 +241,11 @@ export async function injectSignatureForUser(params: {
     /* fall through */
   }
 
-  if (outlookToken) {
-    try {
-      const ok = await tryEwsSoap({
-        userEmail: params.userEmail,
-        htmlContent: params.htmlContent,
-        signatureName: params.signatureName,
-        accessToken: outlookToken,
-      });
-      if (ok) return { success: true, method: "ews-soap", warning: roamingError };
-    } catch {
-      /* fall through */
-    }
-  }
-
   return {
     success: false,
     method: "none",
     error:
-      roamingError ||
-      "All injection methods failed (Outlook roaming signatures, Outlook REST v2, Graph mailboxSettings, EWS SOAP). Confirm application permissions Mail.ReadWrite, MailboxSettings.ReadWrite, and Exchange full_access_as_app are granted with admin consent.",
+      graphError ||
+      "All injection methods failed (Graph userConfiguration, EWS SOAP, Outlook REST v2, Graph mailboxSettings). Confirm application permissions MailboxConfigItem.ReadWrite, Mail.ReadWrite, MailboxSettings.ReadWrite, and Exchange full_access_as_app are granted with admin consent.",
   };
 }

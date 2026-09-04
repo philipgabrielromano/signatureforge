@@ -10,15 +10,29 @@ The production target is **Render.com**: a Docker web service, a Managed Postgre
 
 For each pending user, SignatureForge resolves `{{variables}}` from Azure AD profile fields, then writes the signature in this order:
 
-1. **Outlook roaming / cloud signatures** (what Outlook on the web and New Outlook actually load). App-only tokens cannot call OutlookCloudSettings / substrate OWS (that path returns 401). SignatureForge writes SDS items under `ApplicationDataRoot` via EWS impersonation instead, including the HTML body plus RawJSON, and sets the default new/reply signature.
-2. **Outlook REST API v2** `PATCH /users/{id}/MailboxSettings` with `SignatureHtml` (legacy).
-3. **Microsoft Graph** `PATCH /users/{id}/mailboxSettings` with the same semantic fields.
-4. **Exchange Web Services SOAP** `UpdateUserConfiguration` on `OWA.UserOptions`, with `X-AnchorMailbox` impersonation.
+1. **Microsoft Graph userConfiguration API (beta)** — `PATCH /users/{id}/mailFolders/msgfolderroot/userConfigurations/OWA.UserOptions`. This is the supported replacement for EWS UserConfiguration (EWS is blocked in Exchange Online from October 2026). Requires the `MailboxConfigItem.ReadWrite` application permission.
+2. **Exchange Web Services SOAP** `UpdateUserConfiguration` on `OWA.UserOptions`, with `X-AnchorMailbox` impersonation (works until Microsoft disables EWS).
+3. **Outlook REST API v2** `PATCH /users/{id}/MailboxSettings` with `SignatureHtml` (legacy).
+4. **Microsoft Graph** `PATCH /users/{id}/mailboxSettings` with the same semantic fields.
 
-A roaming write also still attempts the EWS legacy store so Classic Outlook can pick the same HTML up. A failure on one user is recorded (`signaturePushStatus = failed`) and processing continues. The cron job retries pending and failed mailboxes on the next tick.
+### Roaming signatures require a tenant setting
+
+Outlook on the web and New Outlook read **roaming (cloud) signatures** by default. Microsoft provides **no app-accessible API** for that store: the OutlookCloudSettings endpoint rejects app-only tokens (401), and Exchange refuses EWS writes into the SDS folders ("Cannot save changes made to an item to store"). Every server-side signature tool has the same constraint.
+
+For deployed signatures to appear in OWA / New Outlook, disable roaming signatures at the tenant level (Microsoft's official escape hatch, MC684213):
+
+```powershell
+Connect-ExchangeOnline
+Set-OrganizationConfig -PostponeRoamingSignaturesUntilLater $true
+```
+
+Clients then read the legacy `OWA.UserOptions` store that SignatureForge writes. Classic Outlook for Windows keeps using local signatures and is unaffected.
+
+A failure on one user is recorded (`signaturePushStatus = failed`) and processing continues. The cron job retries pending and failed mailboxes on the next tick.
 
 Application permissions required:
 
+- `MailboxConfigItem.ReadWrite` (Graph userConfiguration API)
 - `MailboxSettings.ReadWrite`
 - `Mail.ReadWrite`
 - `User.Read.All`

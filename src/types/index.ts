@@ -13,7 +13,7 @@ export type AzureTenantConfig = {
 export type InjectResult = {
   success: boolean;
   method:
-    | "roaming-cloud"
+    | "graph-userconfig"
     | "outlook-rest-v2"
     | "graph-mailboxsettings"
     | "ews-soap"
